@@ -1,13 +1,12 @@
 // #![windows_subsystem = "windows"]
 //TODO Add score counter on screen
 //TODO Add high score
-//DONE Add main menu
+//TODO Add main menu
 //TODO Add pause screen
 //DONE Add material to target
-//DONE Add title
-//DONE Add start button
+//TODO Add title
+//TODO Add start button
 //TODO Make game end when you miss the target
-//TODO Make the start button start the game
 
 use bevy::prelude::*;
 use rand::Rng;
