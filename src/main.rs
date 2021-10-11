@@ -6,8 +6,8 @@
 //DONE Add material to target
 //DONE Add title
 //DONE Add start button
-//TODO Make game end when you miss the target
-//TODO Make the start button start the game
+//DONE Make the start button start the game
+//TODO Mouse should be a crosshair
 
 use bevy::prelude::*;
 use rand::Rng;
@@ -151,9 +151,19 @@ fn target_despawn(mut query: Query<Entity, With<Target>>, mut commands: Commands
     }
 }
 
-fn switch_to_game(kb: Res<Input<KeyCode>>, mut game_state: ResMut<State<GameState>>) {
-    if kb.just_pressed(KeyCode::Space) {
-        game_state.set(GameState::InGame).unwrap();
+fn switch_to_game(
+    mut game_state: ResMut<State<GameState>>,
+    mut interaction_query: Query<&Interaction,(Changed<Interaction>, With<StartBtn>)>,
+)
+{
+    for interaction in interaction_query.iter_mut() {
+
+        match *interaction {
+            Interaction::Clicked => {
+                game_state.set(GameState::InGame).unwrap();
+            }
+            _ => (),
+        }
     }
 }
 
@@ -168,56 +178,45 @@ fn main_menu_setup(
         .spawn_bundle(NodeBundle {
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
-                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::ColumnReverse,
+                
                 ..Default::default()
             },
             material: materials.add(Color::NONE.into()),
             ..Default::default()
         })
+        
         .with_children(|parent| {
-            // flex center
-            parent.spawn_bundle(NodeBundle {
-                    style: Style {
-                        size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
-                        position_type: PositionType::Absolute,
-                        align_items: AlignItems::Center,
-                        flex_direction: FlexDirection::ColumnReverse,
-                        ..Default::default()
-                    },
-                    material: materials.add(Color::NONE.into()),
+            // Title image
+            parent.spawn_bundle(ImageBundle {
+                style: Style {
+                    size: Size::new(Val::Px(800.0), Val::Auto),
+                    margin: Rect { left: Val::Px(25.0), right: Val::Px(25.0), top: Val::Px(50.0), bottom: Val::Undefined },
+                    max_size: Size::new(Val::Percent(100.0), Val::Auto),
+                    min_size: Size::new(Val::Px(190.0), Val::Px(80.0)),
+
                     ..Default::default()
-                })
-                .insert(Title)
-                .with_children(|parent| {
-                    // title (image)
-                    parent.spawn_bundle(ImageBundle {
-                        style: Style {
-                            size: Size::new(Val::Px(800.0), Val::Auto),
-                            margin: Rect::all(bevy::prelude::Val::Px(20.0)),
+                },
+                material: ui_materials.title.clone(),
+                ..Default::default()
+            })
+            .insert(Title);
 
-                            ..Default::default()
-                        },
-                        material: ui_materials.title.clone(),
-                        ..Default::default()
-                    })
-                    .insert(Title);
+            // Start button
+            parent.spawn_bundle(ButtonBundle {
+                style: Style {
+                    size: Size::new(Val::Px(400.0), Val::Px(400.0 * (16.0 / 38.0))),
+                    margin: Rect { left: Val::Undefined, right: Val::Undefined, top: Val::Auto, bottom: Val::Auto },
 
-                    parent.spawn_bundle(ButtonBundle {
-                        style: Style {
-                            size: Size::new(Val::Px(380.0), Val::Px(160.0)),
-                            // center button
-                            margin: Rect { left: Val::Px(0.0), right: Val::Px(0.0),  top: Val::Px(160.0), bottom: Val::Px(0.0) },
-                            // horizontally center child text
-                            justify_content: JustifyContent::Center,
-                            // vertically center child text
-                            align_items: AlignItems::Center,
-                            ..Default::default()
-                        },
-                        material: ui_materials.start_btn.clone(),
-                        ..Default::default()
-                    })
-                    .insert(StartBtn);
-                });
+                    min_size: Size::new(Val::Px(400.0), Val::Px(400.0 * (16.0 / 38.0))),
+
+                    ..Default::default()
+                },
+                material: ui_materials.start_btn.clone(),
+                ..Default::default()
+            })
+            .insert(StartBtn);
         });
 }
 
