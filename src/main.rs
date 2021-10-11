@@ -9,6 +9,7 @@
 //DONE Make the start button start the game
 //TODO Mouse should be a crosshair
 
+
 use bevy::prelude::*;
 use rand::Rng;
 
@@ -58,7 +59,7 @@ fn spawn_target(
         let mut rng = rand::thread_rng();
         let window = windows.get_primary().unwrap();
 
-        let target_width = window.width() / 8.0;
+        let target_width = (window.width() / 30.0 * window.height() / 30.0) / 8.0;
 
         let target_x = rng.gen_range(
             -window.width() / 2.0 + target_width / 2.0..window.width() / 2.0 - target_width / 2.0,
@@ -95,10 +96,8 @@ fn target_click(
             for (tf, sprite, entity) in query.iter_mut() {
                 let distance = Vec2::from(tf.translation)
                     .distance(mouse_pos - Vec2::new(window.width() / 2.0, window.height() / 2.0));
-                println!("distance: {}", distance);
 
                 if distance <= sprite.size.x / 2.0 {
-                    println!("pressed on right position");
                     commands.entity(entity).despawn();
                     if targets_on_screen.0 > 0 {
                         targets_on_screen.0 -= 1;
@@ -122,7 +121,7 @@ fn target_movement(
     for (mut tf, mut acc) in query.iter_mut() {
         let window = windows.get_primary().unwrap();
         acc.0 += gravity.0;
-        tf.translation.y -= acc.0 * time.delta_seconds() * (window.height() / 1000.0);
+        tf.translation.y -= acc.0 * (window.height() / 1000.0) * time.delta_seconds();
     }
 }
 
@@ -140,6 +139,7 @@ fn target_reset(
             commands.entity(entity).despawn();
             targets_on_screen.0 -= 1;
             gravity.0 = 1.0;
+            println!("Score: {}", score.0);
             score.0 = 0;
         }
     }

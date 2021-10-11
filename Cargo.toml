@@ -1,5 +1,5 @@
 [package]
-name = "dropclick"
+name = "pocop"
 version = "0.1.0"
 edition = "2018"
 
@@ -8,3 +8,4 @@ edition = "2018"
 [dependencies]
 bevy = "0.5.0"
 rand = "0.8.4"
+winit = "0.25.0"
