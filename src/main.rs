@@ -14,13 +14,15 @@ use bevy::{ecs::query, prelude::*};
 use rand::Rng;
 
 struct Target;
-
 struct Title;
-struct PausedScreenEntity;
+struct PausedScreenRelated;
+struct FullscreenButton;
+struct MainScreenRelated;
 struct StartBtn;
 struct Speed(f32);
 struct Gravity(f32);
 struct Score(u32);
+struct Checked(bool);
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 enum GameState {
@@ -32,7 +34,11 @@ enum GameState {
 pub struct Materials {
     target: Handle<ColorMaterial>,
     title: Handle<ColorMaterial>,
-    start_btn: Handle<ColorMaterial>
+    start_btn: Handle<ColorMaterial>,
+    paused_title: Handle<ColorMaterial>,
+    fullscreen_text: Handle<ColorMaterial>,
+    button: Handle<ColorMaterial>,
+    button_pressed: Handle<ColorMaterial>,
 }
 
 fn setup(
@@ -47,33 +53,19 @@ fn setup(
         target: color_material.add(asset_server.load("target.png").into()),
         title: color_material.add(asset_server.load("pocop.png").into()),
         start_btn: color_material.add(asset_server.load("start_btn.png").into()),
+        paused_title: color_material.add(asset_server.load("pause.png").into()),
+        fullscreen_text: color_material.add(asset_server.load("fullscreen.png").into()),
+        button: color_material.add(asset_server.load("button.png").into()),
+        button_pressed: color_material.add(asset_server.load("button_pressed.png").into()),
     })
 }
 
-fn spawn_target(
+fn game_startup(
     mut commands: Commands,
     materials: Res<Materials>,
     windows: Res<Windows>,
 ) {
-    let mut rng = rand::thread_rng();
-    let window = windows.get_primary().unwrap();
-
-    let target_width = (window.width() / 30.0 * window.height() / 30.0) / 8.0;
-
-    let target_x = rng.gen_range(
-        -window.width() / 2.0 + target_width / 2.0..window.width() / 2.0 - target_width / 2.0,
-    );
-    let target_y = window.height() / 2.0 - target_width / 2.0;
-
-    commands
-        .spawn_bundle(SpriteBundle {
-            material: materials.target.clone(),
-            transform: Transform::from_xyz(target_x, target_y, 0.0),
-            sprite: Sprite::new(Vec2::new(target_width, target_width)),
-            ..Default::default()
-        })
-        .insert(Target)
-        .insert(Speed(0.0));
+    spawn_target(&windows, &mut commands, &materials);
 }
 
 fn target_click(
@@ -144,6 +136,7 @@ fn target_reset(
     mut commands: Commands,
     mut gravity: ResMut<Gravity>,
     mut score: ResMut<Score>,
+    materials: Res<Materials>,
 ) {
     let window = windows.get_primary().unwrap();
     for (entity, tf) in query.iter_mut() {
@@ -152,8 +145,30 @@ fn target_reset(
             gravity.0 = 1.0;
             println!("Score: {}", score.0);
             score.0 = 0;
+
+
+            spawn_target(&windows, &mut commands, &materials);
         }
     }
+}
+
+fn spawn_target(windows: &Res<Windows>, commands: &mut Commands, materials: &Res<Materials>) {
+    let mut rng = rand::thread_rng();
+    let window = windows.get_primary().unwrap();
+    let target_width = (window.width() / 30.0 * window.height() / 30.0) / 8.0;
+    let target_x = rng.gen_range(
+        -window.width() / 2.0 + target_width / 2.0..window.width() / 2.0 - target_width / 2.0,
+    );
+    let target_y = window.height() / 2.0 - target_width / 2.0;
+    commands
+        .spawn_bundle(SpriteBundle {
+            material: materials.target.clone(),
+            transform: Transform::from_xyz(target_x, target_y, 0.0),
+            sprite: Sprite::new(Vec2::new(target_width, target_width)),
+            ..Default::default()
+        })
+        .insert(Target)
+        .insert(Speed(0.0));
 }
 
 fn target_despawn(
@@ -204,6 +219,7 @@ fn main_menu_setup(
             material: color_material.add(Color::NONE.into()),
             ..Default::default()
         })
+        .insert(MainScreenRelated)
         .with_children(|parent| {
             // Title image
             parent.spawn_bundle(ImageBundle {
@@ -218,7 +234,8 @@ fn main_menu_setup(
                 material: ui_materials.title.clone(),
                 ..Default::default()
             })
-            .insert(Title);
+            .insert(Title)
+            .insert(MainScreenRelated);
 
             // Start button
             parent.spawn_bundle(ButtonBundle {
@@ -233,12 +250,13 @@ fn main_menu_setup(
                 material: ui_materials.start_btn.clone(),
                 ..Default::default()
             })
-            .insert(StartBtn);
+            .insert(StartBtn)
+            .insert(MainScreenRelated);
         });
 }
 
 fn despawn_title(
-    mut query: Query<Entity, With<Title>>,
+    mut query: Query<Entity, With<MainScreenRelated>>,
     mut commands: Commands,
 ){
     for entity in query.iter_mut() {
@@ -255,7 +273,7 @@ fn despawn_start_button(
     }
 }
 
-fn pausing(
+fn pause_handler(
     kb: Res<Input<KeyCode>>,
     mut game_state: ResMut<State<GameState>>,
 ) {
@@ -284,6 +302,7 @@ fn paused_setup(
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
                 align_items: AlignItems::Center,
+                justify_content: JustifyContent::FlexStart,
                 flex_direction: FlexDirection::ColumnReverse,
                 
                 ..Default::default()
@@ -302,16 +321,85 @@ fn paused_setup(
 
                     ..Default::default()
                 },
-                material: ui_materials.title.clone(),
+                material: ui_materials.paused_title.clone(),
                 ..Default::default()
             })
-            .insert(PausedScreenEntity);
-        }).insert(PausedScreenEntity);
+            .insert(PausedScreenRelated);
+            // holder for fullscreen
+            parent.spawn_bundle(NodeBundle {
+                style: Style {
+                    size: Size::new(Val::Auto, Val::Px(80.0)),
+                    margin: Rect { left: Val::Px(25.0), right: Val::Px(25.0), top: Val::Px(200.0), bottom: Val::Undefined },
+                    max_size: Size::new(Val::Percent(100.0), Val::Auto),
+
+                    ..Default::default()
+                },
+                material: color_material.add(Color::NONE.into()),
+                ..Default::default()
+            })
+            .with_children(|parent| {
+                // Fullscreen thing
+                parent.spawn_bundle(ImageBundle {
+                    style: Style {
+                        size: Size::new(Val::Auto, Val::Px(80.0)),
+                        margin: Rect { left: Val::Px(25.0), right: Val::Px(25.0), top: Val::Px(50.0), bottom: Val::Undefined },
+                        max_size: Size::new(Val::Percent(100.0), Val::Auto),
+
+                        ..Default::default()
+                    },
+                    material: ui_materials.fullscreen_text.clone(),
+                    ..Default::default()
+                })
+                .insert(PausedScreenRelated);
+                
+                parent.spawn_bundle(ButtonBundle {
+                    style: Style {
+                        size: Size::new(Val::Px(80.0), Val::Px(80.0)),
+                        margin: Rect { left: Val::Px(25.0), right: Val::Px(25.0), top: Val::Px(50.0), bottom: Val::Undefined },
+                        max_size: Size::new(Val::Percent(100.0), Val::Auto),
+
+                        ..Default::default()
+                    },
+                    material: ui_materials.button.clone(),
+                    ..Default::default()
+                })
+                .insert(FullscreenButton)
+                .insert(Checked(false))
+                .insert(PausedScreenRelated);
+            })
+            .insert(PausedScreenRelated);
+        }).insert(PausedScreenRelated);
+}
+
+fn fullscreen_listener(
+    mut query: Query<(&Interaction, &mut Handle<ColorMaterial>, &mut Checked),(Changed<Interaction>, With<Button>),>,
+    ui_materials: Res<Materials>,
+) {
+    for (interaction, mut material, mut checked) in query.iter_mut() {
+        match *interaction {
+            Interaction::Clicked => {
+                if checked.0 {
+                    *material = ui_materials.button.clone();
+                    checked.0 = false;
+                }
+                else {
+                    *material = ui_materials.button_pressed.clone();
+                    checked.0 = true;
+                }
+
+            }
+            Interaction::Hovered => {
+            }
+            Interaction::None => {
+            }
+        }
+    }
+
 }
 
 fn paused_exit(
     mut commands: Commands,
-    mut query: Query<Entity, With<PausedScreenEntity>>
+    mut query: Query<Entity, With<PausedScreenRelated>>
 ) {
     for entity in query.iter_mut() {
         commands.entity(entity).despawn();
@@ -336,7 +424,7 @@ fn main() {
         .add_startup_system(setup.system())
         //
         // Pausing
-        .add_system(pausing.system())
+        .add_system(pause_handler.system())
         //
         // System Sets
         //
@@ -346,13 +434,22 @@ fn main() {
             .with_system(main_menu_setup.system()),
         )
         .add_system_set(
-            SystemSet::on_update(GameState::MainMenu)
-            .with_system(switch_to_game.system()),
+            SystemSet::on_resume(GameState::MainMenu)
+            .with_system(main_menu_setup.system()),
         )
         .add_system_set(
             SystemSet::on_exit(GameState::MainMenu)
             .with_system(despawn_title.system())
             .with_system(despawn_start_button.system())
+        )
+        .add_system_set(
+            SystemSet::on_pause(GameState::MainMenu)
+            .with_system(despawn_title.system())
+            .with_system(despawn_start_button.system())
+        )
+        .add_system_set(
+            SystemSet::on_update(GameState::MainMenu)
+            .with_system(switch_to_game.system()),
         )
         // Paused
         .add_system_set(
@@ -367,12 +464,13 @@ fn main() {
         )
         .add_system_set(
             SystemSet::on_update(GameState::Paused)
+            .with_system(fullscreen_listener.system())
                 
         )
         // InGame set
         .add_system_set(
             SystemSet::on_enter(GameState::InGame)
-            .with_system(spawn_target.system())
+            .with_system(game_startup.system())
         )
         
         .add_system_set(
@@ -387,7 +485,7 @@ fn main() {
         )
         .add_system_set(
             SystemSet::on_resume(GameState::InGame)
-                .with_system(spawn_target.system())
+                .with_system(game_startup.system())
         )
         .add_system_set(
             SystemSet::on_exit(GameState::InGame)
