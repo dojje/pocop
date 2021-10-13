@@ -10,7 +10,7 @@
 //TODO Mouse should be a crosshair
 
 
-use bevy::{ecs::query, prelude::*};
+use bevy::{prelude::*, window::WindowMode};
 use rand::Rng;
 
 struct Target;
@@ -22,7 +22,7 @@ struct StartBtn;
 struct Speed(f32);
 struct Gravity(f32);
 struct Score(u32);
-struct Checked(bool);
+struct FullscreenEnabled(bool);
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 enum GameState {
@@ -45,7 +45,12 @@ fn setup(
     mut commands: Commands,
     mut color_material: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
+    mut windows: ResMut<Windows>,
 ) {
+    let window = windows.get_primary_mut().unwrap();
+    
+    window.set_mode(WindowMode::BorderlessFullscreen);
+
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
     commands.spawn_bundle(UiCameraBundle::default());
 
@@ -295,7 +300,15 @@ fn paused_setup(
     mut commands: Commands,
     mut color_material: ResMut<Assets<ColorMaterial>>,
     ui_materials: Res<Materials>,
+    fullscreen_enabled: Res<FullscreenEnabled>,
 ) {
+
+    let check_material = if fullscreen_enabled.0 {
+        ui_materials.button_pressed.clone()
+    } else {
+        ui_materials.button.clone()
+    };
+
 
     commands
         .spawn_bundle(NodeBundle {
@@ -360,11 +373,10 @@ fn paused_setup(
 
                         ..Default::default()
                     },
-                    material: ui_materials.button.clone(),
+                    material: check_material,
                     ..Default::default()
                 })
                 .insert(FullscreenButton)
-                .insert(Checked(false))
                 .insert(PausedScreenRelated);
             })
             .insert(PausedScreenRelated);
@@ -372,19 +384,27 @@ fn paused_setup(
 }
 
 fn fullscreen_listener(
-    mut query: Query<(&Interaction, &mut Handle<ColorMaterial>, &mut Checked),(Changed<Interaction>, With<Button>),>,
+    mut query: Query<(&Interaction, &mut Handle<ColorMaterial>),(Changed<Interaction>, With<Button>),>,
     ui_materials: Res<Materials>,
+    mut windows: ResMut<Windows>,
+    mut checked: ResMut<FullscreenEnabled>,
 ) {
-    for (interaction, mut material, mut checked) in query.iter_mut() {
+    for (interaction, mut material) in query.iter_mut() {
         match *interaction {
             Interaction::Clicked => {
+                let window = windows.get_primary_mut().unwrap();
                 if checked.0 {
                     *material = ui_materials.button.clone();
                     checked.0 = false;
+
+    
+                    window.set_mode(WindowMode::Windowed);
+                    
                 }
                 else {
                     *material = ui_materials.button_pressed.clone();
                     checked.0 = true;
+                    window.set_mode(WindowMode::BorderlessFullscreen);
                 }
 
             }
@@ -416,6 +436,7 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.927, 0.927, 0.927)))
         .insert_resource(Gravity(1.0))
         .insert_resource(Score(0))
+        .insert_resource(FullscreenEnabled(true))
         //
         // Add state
         .add_state(GameState::MainMenu)
