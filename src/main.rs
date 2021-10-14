@@ -19,6 +19,10 @@ use main_menu::MainMenuPlugin;
 use pause::PausePlugin;
 use ingame::InGamePlugin;
 
+use main_menu::MainMenuPlugin;
+use pause::PausePlugin;
+use ingame::InGamePlugin;
+
 struct Target;
 struct Title;
 struct PausedScreenRelated;
