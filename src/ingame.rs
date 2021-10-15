@@ -1,34 +1,46 @@
 use bevy::{prelude::*};
 use rand::Rng;
 
-use crate::{GameState, Gravity, Materials, Score, Speed, Target};
+use crate::{Crosshair, GameState, Gravity, Materials, Score, Speed, Target};
 
 pub struct InGamePlugin;
 
 impl Plugin for InGamePlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
+        // Setup systems
         .add_system_set(
             SystemSet::on_enter(GameState::InGame)
             .with_system(game_startup.system())
+            .with_system(hide_cursor.system())
+            .with_system(spawn_crosshair.system())
         )
         .add_system_set(
             SystemSet::on_resume(GameState::InGame)
-                .with_system(game_startup.system())
+            .with_system(game_startup.system())
+            .with_system(hide_cursor.system())
+            .with_system(spawn_crosshair.system())
         )
+        // Update system
         .add_system_set(
             SystemSet::on_update(GameState::InGame)
                 .with_system(target_movement.system())
                 .with_system(target_click.system())
-                .with_system(target_reset.system()),
+                .with_system(target_reset.system())
+                .with_system(move_crosshair.system())
         )
+        // Shutdown systems
         .add_system_set(
             SystemSet::on_pause(GameState::InGame)
                 .with_system(target_despawn.system())
+                .with_system(show_cursor.system())
+                .with_system(despawn_crosshair.system())
         )
         .add_system_set(
             SystemSet::on_exit(GameState::InGame)
             .with_system(target_despawn.system())
+            .with_system(show_cursor.system())
+            .with_system(despawn_crosshair.system())
         );
     }
 }
@@ -39,6 +51,59 @@ fn game_startup(
     windows: Res<Windows>,
 ) {
     spawn_target(&windows, &mut commands, &materials);
+}
+
+fn hide_cursor(
+    mut windows: ResMut<Windows>,
+) {
+    let window = windows.get_primary_mut().unwrap();
+
+    window.set_cursor_visibility(false);
+}
+
+fn show_cursor(
+    mut windows: ResMut<Windows>,
+) {
+    let window = windows.get_primary_mut().unwrap();
+
+    window.set_cursor_visibility(true);
+}
+
+fn spawn_crosshair(
+    mut commands: Commands,
+    materials: Res<Materials>,
+) {
+    commands
+    .spawn_bundle(SpriteBundle {
+        material: materials.crosshair.clone(),
+        transform: Transform::from_xyz(0.0, 0.0, 0.0),
+        sprite: Sprite::new(Vec2::new(60.0, 60.0)),
+        ..Default::default()
+    })
+    .insert(Crosshair);
+}
+
+fn despawn_crosshair(
+    mut commands: Commands,
+    mut query: Query<Entity, With<Crosshair>>
+) {
+    for entity in query.iter_mut() {
+        commands.entity(entity).despawn();
+    }
+}
+
+fn move_crosshair(
+    windows: ResMut<Windows>,
+    mut query: Query<&mut Transform, With<Crosshair>>
+) {
+    let window = windows.get_primary().unwrap();
+
+    if let Some(mouse_pos) = window.cursor_position() {
+        for mut tf in query.iter_mut() {
+            tf.translation.x = mouse_pos.x - window.width() / 2.0;
+            tf.translation.y = mouse_pos.y - window.height() / 2.0;
+        }    
+    }
 }
 
 fn target_movement(
