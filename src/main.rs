@@ -29,6 +29,7 @@ struct Speed(f32);
 struct Gravity(f32);
 struct Score(u32);
 struct FullscreenEnabled(bool);
+struct Crosshair;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 enum GameState {
@@ -45,9 +46,8 @@ pub struct Materials {
     fullscreen_text: Handle<ColorMaterial>,
     button: Handle<ColorMaterial>,
     button_pressed: Handle<ColorMaterial>,
+    crosshair: Handle<ColorMaterial>,
 }
-
-
 
 fn setup(
     mut commands: Commands,
@@ -70,18 +70,9 @@ fn setup(
         fullscreen_text: color_material.add(asset_server.load("fullscreen.png").into()),
         button: color_material.add(asset_server.load("button.png").into()),
         button_pressed: color_material.add(asset_server.load("button_pressed.png").into()),
+        crosshair: color_material.add(asset_server.load("crosshair.png").into()),
     })
 }
-
-// click on target with mouse
-// cotwem
-
-
-
-
-
-
-
 
 fn main() {
     App::build()
