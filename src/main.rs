@@ -9,15 +9,15 @@
 //DONE Make the start button start the game
 //DONE Mouse should be a crosshair
 
+mod ingame;
 mod main_menu;
 mod pause;
-mod ingame;
 
 use bevy::{prelude::*, window::WindowMode};
 
+use ingame::InGamePlugin;
 use main_menu::MainMenuPlugin;
 use pause::PausePlugin;
-use ingame::InGamePlugin;
 
 struct Target;
 struct Title;
@@ -30,6 +30,7 @@ struct Gravity(f32);
 struct Score(u32);
 struct FullscreenEnabled(bool);
 struct Crosshair;
+struct ScoreText;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 enum GameState {
@@ -47,6 +48,7 @@ pub struct Materials {
     button: Handle<ColorMaterial>,
     button_pressed: Handle<ColorMaterial>,
     crosshair: Handle<ColorMaterial>,
+    font: Handle<Font>
 }
 
 fn setup(
@@ -56,7 +58,7 @@ fn setup(
     mut windows: ResMut<Windows>,
 ) {
     let window = windows.get_primary_mut().unwrap();
-    
+
     window.set_mode(WindowMode::BorderlessFullscreen);
 
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
@@ -71,6 +73,7 @@ fn setup(
         button: color_material.add(asset_server.load("button.png").into()),
         button_pressed: color_material.add(asset_server.load("button_pressed.png").into()),
         crosshair: color_material.add(asset_server.load("crosshair.png").into()),
+        font: asset_server.load("font.ttf"),
     })
 }
 
