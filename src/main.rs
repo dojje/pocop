@@ -13,7 +13,11 @@ mod ingame;
 mod main_menu;
 mod pause;
 
+use std::fs;
+
 use bevy::{prelude::*, window::WindowMode};
+
+use serde::{Serialize, Deserialize};
 
 use ingame::InGamePlugin;
 use main_menu::MainMenuPlugin;
@@ -38,6 +42,10 @@ enum GameState {
     MainMenu,
     Paused,
 }
+#[derive(Serialize, Deserialize)]
+struct Config {
+    fullscreen: bool,
+}
 
 pub struct Materials {
     target: Handle<ColorMaterial>,
@@ -56,10 +64,15 @@ fn setup(
     mut color_material: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
     mut windows: ResMut<Windows>,
+    fullscreen: Res<FullscreenEnabled>,
 ) {
     let window = windows.get_primary_mut().unwrap();
 
-    window.set_mode(WindowMode::BorderlessFullscreen);
+    if fullscreen.0 {
+        window.set_mode(WindowMode::BorderlessFullscreen);
+    } else {
+        window.set_mode(WindowMode::Windowed);
+    }
 
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
     commands.spawn_bundle(UiCameraBundle::default());
@@ -77,7 +90,19 @@ fn setup(
     })
 }
 
+fn get_config() -> Config {
+    // Read the file
+    let contents = fs::read_to_string("config.json")
+    .expect("Something went wrong reading the file");
+
+    let config: Config = serde_json::from_str(contents.as_str()).unwrap();
+
+    config
+}
+
 fn main() {
+    let config = get_config();
+
     App::build()
         //
         // Plugins
@@ -90,7 +115,7 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.927, 0.927, 0.927)))
         .insert_resource(Gravity(1.0))
         .insert_resource(Score(0))
-        .insert_resource(FullscreenEnabled(true))
+        .insert_resource(FullscreenEnabled(config.fullscreen))
         //
         // Add state
         .add_state(GameState::MainMenu)

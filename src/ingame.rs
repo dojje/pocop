@@ -210,7 +210,6 @@ fn update_text (
     materials: Res<Materials>,
 ) {
     for score in ev_levelup.iter() {
-        println!("{}", score.0);
 
         for mut text in query.iter_mut()  {
             text.sections = vec![

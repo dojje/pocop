@@ -1,19 +1,27 @@
+use std::{fs::File, io::Write};
+
 use bevy::{prelude::*, window::WindowMode};
 
-use crate::{FullscreenButton, FullscreenEnabled, GameState, Materials, PausedScreenRelated};
+use crate::{FullscreenButton, FullscreenEnabled, GameState, Materials, PausedScreenRelated, get_config};
 
 pub struct PausePlugin;
 
+struct FullscreenEvent(bool);
+
 impl Plugin for PausePlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.add_system(pause_handler.system())
+        app
+            .add_system(pause_handler.system())
+            .add_system(set_fullscreen_config.system())
+
             .add_system_set(
                 SystemSet::on_enter(GameState::Paused).with_system(paused_setup.system()),
             )
             .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(paused_exit.system()))
             .add_system_set(
                 SystemSet::on_update(GameState::Paused).with_system(fullscreen_listener.system()),
-            );
+            )
+            .add_event::<FullscreenEvent>();
     }
 }
 
@@ -146,6 +154,20 @@ fn paused_exit(mut commands: Commands, mut query: Query<Entity, With<PausedScree
     }
 }
 
+fn set_fullscreen_config(mut fullscreen_event: EventReader<FullscreenEvent>,) {
+    for ev in fullscreen_event.iter() {
+        let mut cur_config = get_config();
+
+        cur_config.fullscreen = ev.0;
+
+        let j = serde_json::to_string(&cur_config).unwrap();
+
+        let mut file = File::create("config.json").unwrap();
+
+        file.write(j.as_bytes()).unwrap();
+    }
+}
+
 fn fullscreen_listener(
     mut query: Query<
         (&Interaction, &mut Handle<ColorMaterial>),
@@ -153,22 +175,24 @@ fn fullscreen_listener(
     >,
     ui_materials: Res<Materials>,
     mut windows: ResMut<Windows>,
-    mut checked: ResMut<FullscreenEnabled>,
+    mut fullscreen_enabled: ResMut<FullscreenEnabled>,
+    mut ev_score: EventWriter<FullscreenEvent>,
 ) {
     for (interaction, mut material) in query.iter_mut() {
         match *interaction {
             Interaction::Clicked => {
                 let window = windows.get_primary_mut().unwrap();
-                if checked.0 {
+                if fullscreen_enabled.0 {
                     *material = ui_materials.button.clone();
-                    checked.0 = false;
+                    fullscreen_enabled.0 = false;
 
                     window.set_mode(WindowMode::Windowed);
                 } else {
                     *material = ui_materials.button_pressed.clone();
-                    checked.0 = true;
+                    fullscreen_enabled.0 = true;
                     window.set_mode(WindowMode::BorderlessFullscreen);
                 }
+                ev_score.send(FullscreenEvent(fullscreen_enabled.0));
             }
             Interaction::Hovered => {}
             Interaction::None => {}
