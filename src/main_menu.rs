@@ -69,11 +69,13 @@ fn main_menu_setup(
                 .insert(Title)
                 .insert(MainScreenRelated);
 
+                let start_button_height = 216.0;
+
             // Start button
             parent
                 .spawn_bundle(ButtonBundle {
                     style: Style {
-                        size: Size::new(Val::Px(400.0), Val::Px(400.0 * (16.0 / 38.0))),
+                        size: Size::new(Val::Px(start_button_height * (28.0 / 16.0)), Val::Px(start_button_height)),
                         margin: Rect {
                             left: Val::Undefined,
                             right: Val::Undefined,
@@ -81,7 +83,7 @@ fn main_menu_setup(
                             bottom: Val::Auto,
                         },
 
-                        min_size: Size::new(Val::Px(400.0), Val::Px(400.0 * (16.0 / 38.0))),
+                        min_size: Size::new(Val::Px(start_button_height * (28.0 / 16.0)), Val::Px(start_button_height)),
 
                         ..Default::default()
                     },

@@ -1,4 +1,4 @@
-// #![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 //TODO Add score counter on screen
 //TODO Add high score
 //DONE Add main menu
@@ -19,14 +19,13 @@ use bevy::{prelude::*, window::WindowMode};
 
 use serde::{Serialize, Deserialize};
 
+
 use ingame::InGamePlugin;
 use main_menu::MainMenuPlugin;
 use pause::PausePlugin;
 
 struct Target;
 struct Title;
-struct PausedScreenRelated;
-struct FullscreenButton;
 struct MainScreenRelated;
 struct StartBtn;
 struct Speed(f32);
@@ -56,7 +55,8 @@ pub struct Materials {
     button: Handle<ColorMaterial>,
     button_pressed: Handle<ColorMaterial>,
     crosshair: Handle<ColorMaterial>,
-    font: Handle<Font>
+    exit: Handle<ColorMaterial>,
+    font: Handle<Font>,
 }
 
 fn setup(
@@ -86,8 +86,9 @@ fn setup(
         button: color_material.add(asset_server.load("button.png").into()),
         button_pressed: color_material.add(asset_server.load("button_pressed.png").into()),
         crosshair: color_material.add(asset_server.load("crosshair.png").into()),
+        exit: color_material.add(asset_server.load("exit.png").into()),
         font: asset_server.load("font.ttf"),
-    })
+    });
 }
 
 fn get_config() -> Config {
@@ -98,6 +99,12 @@ fn get_config() -> Config {
     let config: Config = serde_json::from_str(contents.as_str()).unwrap();
 
     config
+}
+
+fn set_title(mut windows: ResMut<Windows>,) {
+    let window = windows.get_primary_mut().unwrap();
+
+    window.set_title("POCOP".to_string());
 }
 
 fn main() {
@@ -122,6 +129,7 @@ fn main() {
         //
         // Startup systems
         .add_startup_system(setup.system())
+        .add_startup_system(set_title.system())
         // InGame set
         //
         // Running it

@@ -1,13 +1,16 @@
 use std::{fs::File, io::Write};
 
-use bevy::{prelude::*, window::WindowMode};
+use bevy::{app::AppExit, prelude::*, window::WindowMode};
 
-use crate::{FullscreenButton, FullscreenEnabled, GameState, Materials, PausedScreenRelated, get_config};
+use crate::{FullscreenEnabled, GameState, Materials, get_config};
 
-pub struct PausePlugin;
-
+struct PausedScreenRelated;
+struct ExitGameButton;
+struct FullscreenButton;
 struct FullscreenEvent(bool);
 
+// Plugin
+pub struct PausePlugin;
 impl Plugin for PausePlugin {
     fn build(&self, app: &mut AppBuilder) {
         app
@@ -19,7 +22,9 @@ impl Plugin for PausePlugin {
             )
             .add_system_set(SystemSet::on_exit(GameState::Paused).with_system(paused_exit.system()))
             .add_system_set(
-                SystemSet::on_update(GameState::Paused).with_system(fullscreen_listener.system()),
+                SystemSet::on_update(GameState::Paused)
+                .with_system(fullscreen_listener.system())
+                .with_system(exit_listener.system()),
             )
             .add_event::<FullscreenEvent>();
     }
@@ -55,7 +60,7 @@ fn paused_setup(
             style: Style {
                 size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
                 align_items: AlignItems::Center,
-                justify_content: JustifyContent::FlexStart,
+                justify_content: JustifyContent::SpaceAround,
                 flex_direction: FlexDirection::ColumnReverse,
 
                 ..Default::default()
@@ -90,9 +95,9 @@ fn paused_setup(
                     style: Style {
                         size: Size::new(Val::Auto, Val::Px(80.0)),
                         margin: Rect {
-                            left: Val::Px(25.0),
-                            right: Val::Px(25.0),
-                            top: Val::Px(200.0),
+                            left: Val::Undefined,
+                            right: Val::Undefined,
+                            top: Val::Undefined,
                             bottom: Val::Undefined,
                         },
                         max_size: Size::new(Val::Percent(100.0), Val::Auto),
@@ -144,6 +149,30 @@ fn paused_setup(
                         .insert(PausedScreenRelated);
                 })
                 .insert(PausedScreenRelated);
+                
+                let exit_button_height = 162.0;
+
+                parent
+                    .spawn_bundle(ButtonBundle {
+                        style: Style {
+                            // size: Size::new(Val::Px(exit_button_height * (28.0 / 16.0)), Val::Px(exit_button_height)),
+                            margin: Rect {
+                                left: Val::Undefined,
+                                right: Val::Undefined,
+                                top: Val::Px(100.0),
+                                bottom: Val::Px(100.0),
+                            },
+                            min_size: Size::new(Val::Px(exit_button_height * (28.0 / 16.0)), Val::Px(exit_button_height)),
+                            max_size: Size::new(Val::Percent(100.0 * (16.0 / 28.0)), Val::Percent(100.0)),
+
+                            ..Default::default()
+                        },
+                        material: ui_materials.exit.clone(),
+                        ..Default::default()
+                    })
+                    .insert(ExitGameButton)
+                    .insert(PausedScreenRelated);
+            
         })
         .insert(PausedScreenRelated);
 }
@@ -193,6 +222,24 @@ fn fullscreen_listener(
                     window.set_mode(WindowMode::BorderlessFullscreen);
                 }
                 ev_score.send(FullscreenEvent(fullscreen_enabled.0));
+            }
+            Interaction::Hovered => {}
+            Interaction::None => {}
+        }
+    }
+}
+
+fn exit_listener(
+    mut query: Query<
+        &Interaction,
+        (Changed<Interaction>, With<ExitGameButton>),
+    >,
+    mut exit: EventWriter<AppExit>
+) {
+    for interaction in query.iter_mut() {
+        match *interaction {
+            Interaction::Clicked => {
+                exit.send(AppExit)
             }
             Interaction::Hovered => {}
             Interaction::None => {}
